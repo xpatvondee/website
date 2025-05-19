@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Profile</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+    <h1 class="text-2xl mb-4">Your Profile</h1>
+    <form action="/post" method="POST" class="mb-4">
+        <textarea name="content" placeholder="Share a garden update..." required class="border p-2 w-full"></textarea>
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 mt-2">Post</button>
+    </form>
+    <div id="posts" class="mb-4"></div>
+    <div>
+        <h2 class="text-xl">Chat</h2>
+        <ul id="messages" class="border p-2 h-40 overflow-y-scroll mb-2"></ul>
+        <input id="m" autocomplete="off" class="border p-2 w-full" /><button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-1">Send</button>
+    </div>
+    <script>
+        const socket = io();
+        const messages = document.getElementById('messages');
+        socket.on('chat message', function(msg){
+            const item = document.createElement('li');
+            item.textContent = msg;
+            messages.appendChild(item);
+        });
+        function sendMessage() {
+            const input = document.getElementById('m');
+            socket.emit('chat message', input.value);
+            input.value = '';
+        }
+
+        fetch('/posts').then(res => res.json()).then(posts => {
+            const postsDiv = document.getElementById('posts');
+            posts.forEach(post => {
+                const div = document.createElement('div');
+                div.className = 'border p-2 mb-2';
+                div.innerHTML = `<strong>${post.username}</strong>: ${post.content} <br><small>${post.timestamp}</small> <form action="/react" method="POST"><input type="hidden" name="postId" value="${post.id}" /><button class="text-sm text-blue-500">Like (${post.likes})</button></form>`;
+                postsDiv.appendChild(div);
+            });
+        });
+    </script>
+</body>
+</html>
