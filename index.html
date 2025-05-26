@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Community Garden</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+</head>
+<body class="is-preload homepage">
+  <div id="page-wrapper">
+    <!-- Unified Header/Main Bar -->
+    <div class="main-header-bar">
+      <div class="main-header-content">
+        <div class="main-header-logo">
+          <h1><a href="index.html" style="color:#ffffff;text-decoration:none;">Community Garden</a></h1>
+          <span>by PATJE</span>
+        </div>
+        <nav class="main-header-nav">
+          <ul id="nav-list">
+            <li class="current"><a href="index.html">Home</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="post.html">Post</a></li>
+          </ul>
+        </nav>
+        <div id="login-status"></div>
+      </div>
+    </div>
+
+    <!-- Main Window -->
+    <div class="main-window">
+      <div id="banner">
+		<div class="main-board-links" style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:24px 0 0 0;">
+  <a href="index.html" class="button" style="background:#55ac5a;">Home</a>
+  <a href="news.html" class="button" style="background:#2196f3;">News</a>
+  <a href="post.html" class="button pink" style="background:#ff4081;">Post</a>
+  <a href="profile.html" class="button" style="background:#fff;color:#388e3c;border:2px solid #388e3c;">Profile</a>
+</div>
+        <h2>Welcome to the Community Garden</h2>
+        <p>Join us in growing a sustainable community.</p>
+      </div>
+      <!-- Login Section / Welcome Section -->
+      <div id="auth-section">
+        <h2>Login</h2>
+        <form id="loginForm">
+          <input type="email" id="loginEmail" placeholder="Email" required>
+          <input type="password" id="loginPassword" placeholder="Password" required>
+          <button type="submit" class="button">Login</button>
+        </form>
+        <div style="margin-top:16px;text-align:center;">
+          <span>Don't have an account?</span>
+          <button id="goSignupBtn" class="button pink" style="margin-left:8px;">Sign up</button>
+        </div>
+        <div id="authMessage" style="margin-top:12px;color:#ffffff;"></div>
+      </div>
+    </div>
+
+    <!-- Features Section Example -->
+    <div id="features-wrapper">
+      <div class="container">
+        <div class="row">
+          <div class="col-4 col-12-medium">
+            <section class="feature" style="background:linear-gradient(120deg,#2196f3 0%,#ffffff 100%);">
+              <h3 style="color:#fff;">Volunteer Opportunities</h3>
+              <p style="color:#fff;">Get involved with our community projects and help maintain our garden.</p>
+            </section>
+          </div>
+          <div class="col-4 col-12-medium">
+            <section class="feature" style="background:linear-gradient(120deg,#ffffff 0%,#66bb6a 100%);">
+              <h3 style="color:#fff;">Upcoming Events</h3>
+              <p style="color:#fff;">Stay updated with our events and join our workshops and gatherings.</p>
+            </section>
+          </div>
+          <div class="col-4 col-12-medium">
+            <section class="feature" style="background:linear-gradient(120deg,#ffffff 0%,#2196f3 100%);">
+              <h3 style="color:#fff;">Garden Tips</h3>
+              <p style="color:#fff;">Learn how to grow your own plants with advice from our community.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+      <footer id="footer" class="container">
+        <div class="row">
+          <div class="col-12">
+            <div id="copyright">
+              <ul class="menu">
+                <li>&copy; Community Garden. All rights reserved</li>
+              
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Firebase Auth Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const firebaseConfig = {
+        apiKey: "AIzaSyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+        authDomain: "community-5f8ef.firebaseapp.com",
+        projectId: "community-5f8ef",
+        storageBucket: "community-5f8ef.appspot.com",
+        messagingSenderId: "650027695039",
+        appId: "1:650027695039:web:7fd7d39b6094d96696ff0a",
+        measurementId: "G-SBLCFP6R0W"
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      firebase.auth().onAuthStateChanged(function(user) {
+        const authSection = document.getElementById('auth-section');
+        const navList = document.getElementById('nav-list');
+        const loginStatus = document.getElementById('login-status');
+        if (user) {
+          firebase.firestore().collection("users").doc(user.uid).get().then(doc => {
+            let nickname = user.email;
+            let profilePic = "assets/images/default-profile.png";
+            if (doc.exists) {
+              if (doc.data().nickname) nickname = doc.data().nickname;
+              if (doc.data().profilePic) profilePic = doc.data().profilePic;
+            }
+            loginStatus.innerHTML = `
+              <img id="profilePicHeader" src="${profilePic}" alt="Profile Picture" title="Go to your profile">
+              <span style="vertical-align:middle;">Logged in as ${user.email}</span>
+            `;
+            document.getElementById('profilePicHeader').onclick = function() {
+              window.location.href = "profile.html";
+            };
+            authSection.innerHTML = `
+              <div style="text-align:center;padding:24px;">
+                <img src="${profilePic}" alt="Profile Picture" class="profile-welcome-img">
+                <div class="profile-welcome-email">
+                  Logged in as <strong>${user.email}</strong>
+                </div>
+                <h2 class="profile-welcome-nick">Welcome, ${nickname}!</h2>
+                <a href="news.html" class="button" style="margin-top:16px;">Go to News</a>
+                <a href="post.html" class="button pink" style="margin-top:16px;margin-left:8px;">Go to Blog</a>
+                <button id="logoutBtn" class="button" style="margin-top:16px;margin-left:8px;">Logout</button>
+              </div>
+            `;
+            document.getElementById('logoutBtn').onclick = function() {
+              firebase.auth().signOut().then(() => window.location.reload());
+            };
+          });
+        } else {
+          loginStatus.textContent = "";
+        }
+      });
+
+      // Login
+      document.getElementById('loginForm').onsubmit = function(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        firebase.auth().signInWithEmailAndPassword(email, password)
+          .then(() => {
+            window.location.href = "news.html";
+          })
+          .catch(function(error) {
+            document.getElementById('authMessage').innerText = error.message;
+          });
+      };
+
+      // Redirect to signup page
+      document.getElementById('goSignupBtn').onclick = function() {
+        window.location.href = "signup.html";
+      };
+    });
+  </script>
+</body>
+</html>

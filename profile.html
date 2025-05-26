@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Profile - Community Garden</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <!-- Firebase scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="page-wrapper">
+        <div id="header-wrapper">
+            <header id="header" class="container">
+                <div id="logo">
+                    <h1><a href="index.html">Community Garden</a></h1>
+                    <span>Your Profile</span>
+                </div>
+                <nav id="nav">
+                    <ul id="nav-list">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="news.html">News</a></li>
+                        <li><a href="post.html">Post</a></li>
+                        <!-- Profile tab will be injected here if logged in -->
+                    </ul>
+                </nav>
+                <div id="login-status" style="margin-left:16px;color:#388e3c;font-size:1em;"></div>
+            </header>
+        </div>
+        <div class="profile-container">
+            <h2 id="welcomeMsg">Welcome!</h2>
+            <div id="profileBox">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <img id="profilePic" src="assets/images/default-profile.png" alt="Profile Picture" style="cursor:pointer;">
+                    <form id="profilePicForm" style="display:none;">
+                        <label for="profilePicSelect"><strong>Choose profile picture:</strong></label>
+                        <select id="profilePicSelect">
+                            <option value="assets/images/default-profile.png">Default</option>
+                            <option value="assets/images/1.png">Avatar 1</option>
+                            <option value="assets/images/2.png">Avatar 2</option>
+                            <option value="assets/images/3.png">Avatar 3</option>
+                            <option value="assets/images/4.png">Avatar 4</option>
+                            <option value="assets/images/5.png">Avatar 5</option>
+                            <option value="assets/images/6.png">Avatar 6</option>
+                        </select>
+                        <button type="submit">Save Picture</button>
+                    </form>
+                    <div id="profilePicMsg" style="font-size:0.95em;color:#388e3c;"></div>
+                </div>
+                <div>
+                    <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                    <p>
+                        <strong>Nickname:</strong>
+                        <span id="nicknameDisplay" style="color:#388e3c; cursor:pointer; text-decoration:underline;" title="Click to change your nickname"></span>
+                    </p>
+                    <form id="nicknameForm" style="display:none;">
+                        <input type="text" id="nicknameInput" placeholder="Enter nickname" maxlength="24">
+                        <button type="submit">Save Nickname</button>
+                    </form>
+                    <div id="nicknameMsg" style="font-size:0.95em;color:#388e3c;"></div>
+                    <button id="logoutBtn">Logout</button>
+                    <div id="profileMessage"></div>
+                </div>
+            </div>
+            <div id="userPostsBox">
+                <h3 style="color:#388e3c;">Your Blog Posts</h3>
+                <div id="userPosts"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+            authDomain: "community-5f8ef.firebaseapp.com",
+            projectId: "community-5f8ef",
+            storageBucket: "community-5f8ef.appspot.com",
+            messagingSenderId: "650027695039",
+            appId: "1:650027695039:web:7fd7d39b6094d96696ff0a",
+            measurementId: "G-SBLCFP6R0W"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        let currentUser = null;
+        let currentNickname = "";
+
+        // Safe redirect function
+        function safeRedirect(url) {
+            // Only allow redirect to local .html pages in your site
+            if (/^[a-zA-Z0-9_\-\/\.]+\.html$/.test(url)) {
+                window.location.assign(url);
+            } else {
+                window.location.assign("index.html");
+            }
+        }
+
+        // Auth state
+        firebase.auth().onAuthStateChanged(function(user) {
+            const navList = document.getElementById('nav-list');
+            const loginStatus = document.getElementById('login-status');
+            const existingProfile = document.getElementById('profile-nav-item');
+            if (existingProfile) existingProfile.remove();
+
+            if (user) {
+                currentUser = user;
+                const profileLi = document.createElement('li');
+                profileLi.id = 'profile-nav-item';
+                profileLi.innerHTML = '<a href="profile.html">Profile</a>';
+                navList.appendChild(profileLi);
+
+                loginStatus.textContent = `Logged in as ${user.email}`;
+                document.getElementById('userEmail').innerText = user.email;
+                loadNickname(user.uid, user.email);
+
+                // Load profile picture from Firestore
+                db.collection("users").doc(user.uid).get().then(doc => {
+                    let pic = "assets/images/default-profile.png";
+                    if (doc.exists && doc.data().profilePic) {
+                        pic = doc.data().profilePic;
+                    }
+                    document.getElementById('profilePic').src = pic;
+                    document.getElementById('profilePicSelect').value = pic;
+                });
+
+                // FIX: Laad nu ook de blogposts van de user!
+                loadUserPosts(user.email);
+
+            } else {
+                loginStatus.textContent = "";
+                safeRedirect("index.html");
+            }
+        });
+
+        // Load nickname from Firestore and update welcome message
+        function loadNickname(uid, email) {
+            db.collection("users").doc(uid).get().then(doc => {
+                const nicknameForm = document.getElementById('nicknameForm');
+                const nicknameDisplay = document.getElementById('nicknameDisplay');
+                if (doc.exists && doc.data().nickname) {
+                    currentNickname = doc.data().nickname;
+                    nicknameDisplay.innerText = currentNickname;
+                    document.getElementById('welcomeMsg').innerText = `Welcome, ${currentNickname}!`;
+                    nicknameForm.style.display = "none";
+                } else {
+                    currentNickname = "";
+                    nicknameDisplay.innerText = "(not set)";
+                    document.getElementById('welcomeMsg').innerText = `Welcome, ${email}!`;
+                    nicknameForm.style.display = "block";
+                }
+            });
+        }
+
+        // Click on nickname to edit
+        document.getElementById('nicknameDisplay').addEventListener('click', function() {
+            document.getElementById('nicknameForm').style.display = "block";
+            document.getElementById('nicknameInput').focus();
+        });
+
+        // Save nickname
+        document.getElementById('nicknameForm').onsubmit = function(e) {
+            e.preventDefault();
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            const msg = document.getElementById('nicknameMsg');
+            if (!nickname) {
+                msg.style.color = "#d32f2f";
+                msg.innerText = "Please enter a nickname.";
+                return;
+            }
+            db.collection("users").doc(currentUser.uid).set({ nickname: nickname }, { merge: true })
+                .then(() => {
+                    msg.style.color = "#388e3c";
+                    msg.innerText = "Nickname saved!";
+                    document.getElementById('nicknameDisplay').innerText = nickname;
+                    document.getElementById('welcomeMsg').innerText = `Welcome, ${nickname}!`;
+                    document.getElementById('nicknameInput').value = "";
+                    document.getElementById('nicknameForm').style.display = "none";
+                })
+                .catch(error => {
+                    msg.style.color = "#d32f2f";
+                    msg.innerText = "Error: " + error.message;
+                });
+        };
+
+        // Logout button
+        document.getElementById('logoutBtn').onclick = function() {
+            firebase.auth().signOut().then(function() {
+                safeRedirect("index.html");
+            });
+        };
+
+        // Load user's posts
+        function loadUserPosts(email) {
+            const postsDiv = document.getElementById('userPosts');
+            postsDiv.innerHTML = '<p>Loading your posts...</p>';
+            db.collection("posts").where("authorEmail", "==", email).orderBy("timestamp", "desc").get()
+                .then(snapshot => {
+                    postsDiv.innerHTML = '';
+                    if (snapshot.empty) {
+                        postsDiv.innerHTML = '<p>You have not posted yet.</p>';
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const post = doc.data();
+                        const date = post.timestamp && post.timestamp.toDate
+                            ? post.timestamp.toDate().toLocaleString()
+                            : '';
+                        postsDiv.innerHTML += `
+                            <div class="post">
+                                <h4>${escapeHtml(post.title)}</h4>
+                                <p>${escapeHtml(post.content)}</p>
+                                <div class="post-meta">
+                                    <span>${date}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(error => {
+                    postsDiv.innerHTML = `<p style="color:#d32f2f;">Error loading posts: ${error.message}</p>`;
+                });
+        }
+
+        // Simple HTML escaping to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/[&<>"']/g, function(m) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                })[m];
+            });
+        }
+
+        // Profielfoto: klik om formulier te tonen
+        document.getElementById('profilePic').addEventListener('click', function() {
+            const form = document.getElementById('profilePicForm');
+            form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
+        });
+
+        // Preview bij selecteren
+        document.getElementById('profilePicSelect').addEventListener('change', function() {
+            document.getElementById('profilePic').src = this.value;
+        });
+
+        // Profielfoto opslaan
+        document.getElementById('profilePicForm').onsubmit = function(e) {
+            e.preventDefault();
+            const pic = document.getElementById('profilePicSelect').value;
+            const msg = document.getElementById('profilePicMsg');
+            if (!currentUser) return;
+            db.collection("users").doc(currentUser.uid).set({ profilePic: pic }, { merge: true })
+                .then(() => {
+                    msg.style.color = "#388e3c";
+                    msg.innerText = "Profile picture saved!";
+                    document.getElementById('profilePicForm').style.display = "none";
+                })
+                .catch(error => {
+                    msg.style.color = "#d32f2f";
+                    msg.innerText = "Error: " + error.message;
+                });
+        };
+    </script>
+</body>
+</html>

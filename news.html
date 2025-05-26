@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Community News - Community Garden</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <!-- Firebase scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <div id="page-wrapper">
+        <!-- Header -->
+        <div id="header-wrapper">
+            <header id="header" class="container">
+                <div id="logo">
+                    <h1><a href="index.html">Community Garden</a></h1>
+                    <span>Grow Together</span>
+                </div>
+                <nav id="nav">
+                    <ul id="nav-list">
+                        <li><a href="index.html">Home</a></li>
+                        <li class="current"><a href="news.html">News</a></li>
+                        <li><a href="post.html">Post</a></li>
+                        <!-- Profile tab will be injected here if logged in -->
+                    </ul>
+                </nav>
+                <div id="login-status" style="margin-left:16px;color:#388e3c;font-size:1em;"></div>
+            </header>
+        </div>
+
+        <!-- Banner (like index.html, but for news) -->
+        <div id="banner-wrapper">
+            <div id="banner" class="box container">
+                <div class="row">
+                    <div class="col-12">
+                        <h2>Latest Community News</h2>
+                        <p>Stay up to date with what's happening in our garden community.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- News Posts Section -->
+        <div id="main-wrapper">
+            <div class="container">
+                <div class="row gtr-200">
+                    <div class="col-12">
+                        <div id="content">
+                            <section class="last">
+                                <div class="news-posts-box" id="newsPosts"></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div id="footer-wrapper">
+            <footer id="footer" class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div id="copyright">
+                            <ul class="menu">
+                                <li>&copy; Community Garden. All rights reserved</li>
+                                <li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <script>
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+            authDomain: "community-5f8ef.firebaseapp.com",
+            projectId: "community-5f8ef",
+            storageBucket: "community-5f8ef.appspot.com",
+            messagingSenderId: "650027695039",
+            appId: "1:650027695039:web:7fd7d39b6094d96696ff0a",
+            measurementId: "G-SBLCFP6R0W"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        let currentUser = null;
+
+        // Show "Logged in as ..." and Profile tab in header if logged in
+        firebase.auth().onAuthStateChanged(function(user) {
+            currentUser = user;
+            const navList = document.getElementById('nav-list');
+            const loginStatus = document.getElementById('login-status');
+            const existingProfile = document.getElementById('profile-nav-item');
+            if (existingProfile) existingProfile.remove();
+
+            if (user) {
+                // Add Profile tab
+                const profileLi = document.createElement('li');
+                profileLi.id = 'profile-nav-item';
+                profileLi.innerHTML = '<a href="profile.html">Profile</a>';
+                navList.appendChild(profileLi);
+
+                // Show logged in status in header
+                loginStatus.textContent = `Logged in as ${user.email}`;
+            } else {
+                loginStatus.textContent = "";
+            }
+            loadNewsPosts();
+        });
+
+        // Load and display posts with comments and delete button
+        function loadNewsPosts() {
+            db.collection("posts").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                const newsDiv = document.getElementById('newsPosts');
+                newsDiv.innerHTML = '';
+                if (snapshot.empty) {
+                    newsDiv.innerHTML = '<p>No news posts yet.</p>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const post = doc.data();
+                    const postId = doc.id;
+                    const date = post.timestamp && post.timestamp.toDate
+                        ? post.timestamp.toDate().toLocaleString()
+                        : '';
+                    let postHtml = `
+                        <div class="news-post" id="post-${postId}">
+                            <h3>${escapeHtml(post.title)}</h3>
+                            <p>${escapeHtml(post.content)}</p>
+                            <div class="news-meta">
+                                <strong>By:</strong> ${escapeHtml(post.author)}
+                                ${date ? `&nbsp;|&nbsp;<span>${date}</span>` : ""}
+                                ${currentUser && (post.authorEmail === currentUser.email || post.authorUid === currentUser.uid) ? `
+                                    <button class="delete-btn" data-postid="${postId}">Delete</button>
+                                ` : ""}
+                            </div>
+                            <div class="comment-section" id="comments-${postId}"></div>
+                            ${currentUser ? `
+                                <form class="commentForm" data-postid="${postId}">
+                                    <input type="text" class="commentInput" placeholder="Write a comment..." required>
+                                    <button type="submit">Comment</button>
+                                </form>
+                            ` : `<div style="color:#888;font-size:0.97em;margin-top:8px;">Log in to comment.</div>`}
+                        </div>
+                    `;
+                    newsDiv.innerHTML += postHtml;
+                    loadComments(postId);
+                });
+
+                // Attach delete handlers
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.onclick = function() {
+                        const postId = this.getAttribute('data-postid');
+                        if (confirm("Are you sure you want to delete this post?")) {
+                            db.collection("posts").doc(postId).delete();
+                        }
+                    };
+                });
+
+                // Attach comment form handlers
+                if (currentUser) {
+                    document.querySelectorAll('.commentForm').forEach(form => {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const postId = this.getAttribute('data-postid');
+                            const input = this.querySelector('.commentInput');
+                            const commentText = input.value.trim();
+                            if (commentText) {
+                                db.collection("users").doc(currentUser.uid).get().then(doc => {
+                                    const nickname = (doc.exists && doc.data().nickname) ? doc.data().nickname : "Anonymous";
+                                    db.collection("posts").doc(postId).collection("comments").add({
+                                        text: commentText,
+                                        author: nickname,
+                                        authorEmail: currentUser.email,
+                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                    }).then(() => {
+                                        input.value = '';
+                                        loadComments(postId);
+                                    });
+                                });
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        // Load comments for a post
+        function loadComments(postId) {
+            db.collection("posts").doc(postId).collection("comments").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+                const commentsDiv = document.getElementById('comments-' + postId);
+                if (!commentsDiv) return;
+                let html = '';
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    const date = comment.timestamp && comment.timestamp.toDate
+                        ? comment.timestamp.toDate().toLocaleString()
+                        : '';
+                    html += `
+                        <div class="comment-card">
+                            <span class="comment-author">${escapeHtml(comment.author)}</span>
+                            <span class="comment-date">${date ? ' | ' + date : ''}</span>
+                            <div class="comment-text">${escapeHtml(comment.text)}</div>
+                        </div>
+                    `;
+                });
+                commentsDiv.innerHTML = html || '<div class="no-comments">No comments yet.</div>';
+            });
+        }
+
+        // Simple HTML escaping to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/[&<>"']/g, function(m) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                })[m];
+            });
+        }
+    </script>
+</body>
+</html>

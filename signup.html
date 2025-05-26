@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Profile - Community Garden</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />1.0/firebase-app-compat.js"></script>
+    <!-- Firebase scripts -->gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+</head>* Small header, consistent with index.html */
+<body>
+    <div id="page-wrapper">
+        <div id="header-wrapper">
+            <header id="header" class="container">
+                <div id="logo">
+                    <h1><a href="index.html">Community Garden</a></h1>
+                    <span>Grow Together</span>
+                </div>set;
+                <nav id="nav">
+                    <ul id="nav-list">ter;
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="news.html">News</a></li>
+                        <li><a href="post.html">Post</a></li>
+                        <!-- Profile tab will be injected here if logged in -->
+                    </ul>
+                </nav>
+            </header>an {
+        </div>
+        <div class="profile-container">
+            <h2 id="welcomeMsg">Welcome!</h2>
+            <div id="profileBox">
+                <img id="profilePic" src="assets/images/default-profile.png" alt="Profile Picture">
+                <div>
+                    <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                    <p><strong>User ID:</strong> <span id="userId"></span></p>
+                    <p><strong>Nickname:</strong> <span id="nicknameDisplay" style="color:#388e3c;"></span></p>
+                    <form id="nicknameForm" style="margin-top:10px;">
+                        <input type="text" id="nicknameInput" placeholder="Enter nickname" maxlength="24">
+                        <button type="submit">Save Nickname</button>
+        font-size: 1em;orm>
+        padding: 2px 8px;id="nicknameMsg" style="font-size:0.95em;color:#388e3c;"></div>
+      }             <button id="logoutBtn">Logout</button>
+      @media (max-width: 600px) {ileMessage"></div>h: 600px) {
+        #header.container {er {
+          flex-direction: column;
+          align-items: flex-start;>
+        }       <h3 style="color:#388e3c;">Your Blog Posts</h3>
+        #nav ul {div id="userPosts"></div>
+          gap: 8px;8px;
+        }/div>
+      }iv>
+      .signup-container {
+        max-width: 400px;g
+        margin: 48px auto;ig = {
+        background: #fff;SyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+        border-radius: 10px;munity-5f8ef.firebaseapp.com",
+        box-shadow: 0 2px 12px rgba(60,80,60,0.08);
+        padding: 32px 24px 24px 24px;-5f8ef.appspot.com",
+      }     messagingSenderId: "650027695039",
+      .signup-container h2 {695039:web:7fd7d39b6094d96696ff0a",
+        text-align: center;"G-SBLCFP6R0W"xt-align: center;
+        color: #388e3c;
+        margin-bottom: 24px;ength) {
+      }     firebase.initializeApp(firebaseConfig);
+      #signupForm label {
+        font-weight: 600;se.firestore();        font-weight: 600;
+        display: block;
+        margin-top: 10px; null;
+      } let currentNickname = "";      }
+      #signupForm input[type="email"],
+      #signupForm input[type="password"] {ot logged in
+        width: 100%;h().onAuthStateChanged(function(user) {
+        padding: 10px;{
+        margin: 6px 0 12px 0; user;
+        border: 1px solid #bdbdbd;tById('userEmail').innerText = user.email;
+        border-radius: 5px;tElementById('userId').innerText = user.uid;
+        font-size: 1em;kname(user.uid, user.email);
+        background: #f1f8e9;s(user.email);#f1f8e9;
+        transition: border 0.2s;
+      }         window.location.href = "index.html";
+      #signupForm input[type="email"]:focus,s,
+      #signupForm input[type="password"]:focus {d"]:focus {
+        border: 1.5px solid #4caf50;
+        outline: none;me from Firestore and update welcome message
+      } function loadNickname(uid, email) {
+      #signupForm button {"users").doc(uid).get().then(doc => {
+        background: #388e3c;ts && doc.data().nickname) {
+        color: white;urrentNickname = doc.data().nickname;
+        border: none;ocument.getElementById('nicknameDisplay').innerText = currentNickname;
+        padding: 10px 22px;t.getElementById('welcomeMsg').innerText = `Welcome, ${currentNickname}!`;px;
+        border-radius: 5px;
+        font-size: 1em;rentNickname = "";
+        cursor: pointer;ment.getElementById('nicknameDisplay').innerText = "(not set)";
+        margin-top: 4px;ment.getElementById('welcomeMsg').innerText = `Welcome, ${email}!`;p: 4px;
+        width: 100%;%;
+        transition: background 0.2s; 0.2s;
+      } }      }
+      #signupForm button:hover {
+        background: #2e7d32;
+      } document.getElementById('nicknameForm').onsubmit = function(e) {
+      #signupMessage {efault();
+        font-size: 1em;ame = document.getElementById('nicknameInput').value.trim();
+        min-height: 24px;ocument.getElementById('nicknameMsg');
+        margin-top: 8px;e) {
+        text-align: center;olor = "#d32f2f";
+      }         msg.innerText = "Please enter a nickname.";
+      .login-link {urn;link {
+        margin-top: 16px;
+        text-align: center;users").doc(currentUser.uid).set({ nickname: nickname }, { merge: true })
+      }         .then(() => {
+      .login-link button {yle.color = "#388e3c";
+        margin-left: 8px;nnerText = "Nickname saved!";
+        background: #388e3c;.getElementById('nicknameDisplay').innerText = nickname;
+        color: #fff;document.getElementById('welcomeMsg').innerText = `Welcome, ${nickname}!`;
+        border: none;ocument.getElementById('nicknameInput').value = "";ne;
+        padding: 7px 18px;
+        border-radius: 5px;r => {
+        font-size: 1em;.style.color = "#d32f2f";
+        cursor: pointer;innerText = "Error: " + error.message;nter;
+        transition: background 0.2s;und 0.2s;
+      } };      }
+      .login-link button:hover {
+        background: #2e7d32;
+      } document.getElementById('logoutBtn').onclick = function() {
+    </style>firebase.auth().signOut().then(function() {
+</head>         window.location.href = "index.html";
+<body>      });
+    <div id="page-wrapper">-wrapper">
+        <div id="header-wrapper">
+            <header id="header" class="container">
+                <div id="logo">email) {
+                    <h1><a href="index.html">Community Garden</a></h1>1>
+                    <span>Grow Together</span>our posts...</p>';
+                </div>ion("posts").where("author", "==", email).orderBy("timestamp", "desc").get()
+                <nav id="nav"> => {
+                    <ul id="nav-list">sDiv.innerHTML = '';
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="news.html">News</a></li> posted yet.</p>';href="news.html">News</a></li>
+                        <li><a href="post.html">Post</a></li>t</a></li>
+                    </ul>
+                </nav>apshot.forEach(doc => {
+            </header>   const post = doc.data();
+        </div>          const date = post.timestamp && post.timestamp.toDate
+        <div class="signup-container">estamp.toDate().toLocaleString()ner">
+            <h2>Sign Up</h2>: '';
+            <form id="signupForm">nnerHTML += `
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" placeholder="Email" required>
+                <label for="signupPassword">Password</label>)}</p>abel>
+                <input type="password" id="signupPassword" placeholder="Password" required>
+                <button type="submit">Sign Up</button>n>Sign Up</button>
+                <div id="signupMessage"></div>div>
+            </form>         </div>
+            <div class="login-link">k">
+                <span>Already have an account?</span>span>
+                <button id="goLoginBtn">Login</button>
+            </div>atch(error => {
+        </div>      postsDiv.innerHTML = `<p style="color:#d32f2f;">Error loading posts: ${error.message}</p>`;
+    </div>      });>
+    <script> 
+      const firebaseConfig = {
+        apiKey: "AIzaSyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+        authDomain: "community-5f8ef.firebaseapp.com",
+        projectId: "community-5f8ef",
+        storageBucket: "community-5f8ef.appspot.com",
+        messagingSenderId: "650027695039",
+        appId: "1:650027695039:web:7fd7d39b6094d96696ff0a",
+        measurementId: "G-SBLCFP6R0W"
+      };
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+
+      document.getElementById('signupForm').onsubmit = function(e) {
+        e.preventDefault();
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const msg = document.getElementById('signupMessage');
+        msg.textContent = "";
+        firebase.auth().createUserWithEmailAndPassword(email, password)
+          .then(() => {
+            msg.style.color = "#388e3c";
+            msg.textContent = "Sign up successful! Redirecting...";
+            setTimeout(() => {
+              window.location.href = "news.html";
+            }, 1000);
+          })
+          .catch(function(error) {
+            msg.style.color = "#d32f2f";
+            msg.textContent = error.message;
+          });
+      };
+
+      document.getElementById('goLoginBtn').onclick = function() {
+        window.location.href = "index.html";
+      };
+    </script>
+</body>
+</html>

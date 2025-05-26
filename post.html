@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Community Blog - Community Garden</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div id="page-wrapper">
+    <!-- Header -->
+    <div id="header-wrapper">
+      <header id="header" class="container">
+        <div id="logo">
+          <h1><a href="index.html">Community Garden</a></h1>
+          <span>Grow Together</span>
+        </div>
+        <nav id="nav">
+          <ul id="nav-list">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="news.html">News</a></li>
+            <li class="current"><a href="post.html">Post</a></li>
+            <!-- Profile tab will be injected here if logged in -->
+          </ul>
+        </nav>
+        <div id="login-status"></div>
+      </header>
+    </div>
+
+    <!-- Banner -->
+    <div id="banner-wrapper">
+      <div id="banner" class="box container">
+        <div class="row">
+          <div class="col-12">
+            <h2>Create a New Blog Post</h2>
+            <p>Share your story, tips, or garden updates with the community!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-wrapper">
+      <div class="container">
+        <div class="row gtr-200">
+          <div class="col-12">
+            <div id="content">
+              <section class="last">
+                <form id="postForm" class="post-form">
+                  <label for="title">Title</label>
+                  <input type="text" id="title" name="title" placeholder="Title" required>
+                  <label for="postContent">Content</label>
+                  <textarea id="postContent" name="postContent" placeholder="Write your post here..." rows="7" required></textarea>
+                  <button type="submit">Post</button>
+                  <div id="postMessage" class="form-message"></div>
+                </form>
+                <div id="loginPrompt" class="login-prompt" style="display:none;">
+                  Please <a href="index.html">log in</a> to create a blog post.
+                </div>
+                <div id="posts-container">
+                  <h2>Recent Posts</h2>
+                  <div id="posts"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer-wrapper">
+      <footer id="footer" class="container">
+        <div class="row">
+          <div class="col-12">
+            <div id="copyright">
+              <ul class="menu">
+                <li>&copy; Community Garden. All rights reserved</li>
+                <li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAd19sRXtfid-8ED7-DxlTlhlRaEnMjBpA",
+    authDomain: "community-5f8ef.firebaseapp.com",
+    projectId: "community-5f8ef",
+    storageBucket: "community-5f8ef.appspot.com",
+    messagingSenderId: "650027695039",
+    appId: "1:650027695039:web:7fd7d39b6094d96696ff0a",
+    measurementId: "G-SBLCFP6R0W"
+  };
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.firestore();
+
+  let currentUser = null;
+
+  firebase.auth().onAuthStateChanged(function(user) {
+    currentUser = user;
+    const navList = document.getElementById('nav-list');
+    const loginStatus = document.getElementById('login-status');
+    // Remove existing Profile tab if present
+    const existingProfile = document.getElementById('profile-nav-item');
+    if (existingProfile) existingProfile.remove();
+
+    if (user) {
+      // Add Profile tab
+      const profileLi = document.createElement('li');
+      profileLi.id = 'profile-nav-item';
+      profileLi.innerHTML = '<a href="profile.html">Profile</a>';
+      navList.appendChild(profileLi);
+
+      // Show logged in status in header
+      loginStatus.textContent = `Logged in as ${user.email}`;
+    } else {
+      loginStatus.textContent = "";
+    }
+
+    if (user) {
+      document.getElementById('postForm').style.display = "block";
+      document.getElementById('loginPrompt').style.display = "none";
+    } else {
+      document.getElementById('postForm').style.display = "none";
+      document.getElementById('loginPrompt').style.display = "block";
+    }
+    loadPosts();
+  });
+
+  // Handle form submission to add a new post
+  document.getElementById('postForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!currentUser) {
+      console.log("Not logged in!");
+      return;
+    }
+    const title = document.getElementById('title').value.trim();
+    const content = document.getElementById('postContent').value.trim();
+    const postMessage = document.getElementById('postMessage');
+    postMessage.textContent = "";
+
+    // Fetch nickname before posting
+    db.collection("users").doc(currentUser.uid).get().then(doc => {
+      const nickname = (doc.exists && doc.data().nickname) ? doc.data().nickname : "Anonymous";
+      if (title && content) {
+        db.collection("posts").add({
+          title: title,
+          content: content,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          author: nickname,
+          authorEmail: currentUser.email,
+          authorUid: currentUser.uid
+        }).then(() => {
+          postMessage.style.color = "#388e3c";
+          postMessage.textContent = "Post submitted!";
+          document.getElementById('postForm').reset();
+          setTimeout(() => { postMessage.textContent = ""; }, 2000);
+          loadPosts();
+        }).catch((error) => {
+          postMessage.style.color = "#d32f2f";
+          postMessage.textContent = "Error: " + error.message;
+        });
+      }
+    });
+  });
+
+  // Load and display posts with comments
+  function loadPosts() {
+    db.collection("posts").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+      const postsDiv = document.getElementById('posts');
+      postsDiv.innerHTML = '';
+      if (snapshot.empty) {
+        postsDiv.innerHTML = '<p>No posts yet.</p>';
+        return;
+      }
+      snapshot.forEach(doc => {
+        const post = doc.data();
+        const postId = doc.id;
+        const date = post.timestamp && post.timestamp.toDate
+          ? post.timestamp.toDate().toLocaleString()
+          : '';
+        let postHtml = `
+          <div class="post">
+            <h3>${escapeHtml(post.title)}</h3>
+            <p>${escapeHtml(post.content)}</p>
+            <div class="post-meta">
+              <strong>By:</strong> ${escapeHtml(post.author)}
+              ${date ? `&nbsp;|&nbsp;<span>${date}</span>` : ""}
+            </div>
+            <div id="comments-${postId}" class="comments"></div>
+            <div id="commentCount-${postId}" class="comment-count"></div>
+            ${currentUser ? `
+              <form class="commentForm" data-postid="${postId}">
+                <input type="text" class="commentInput" placeholder="Write a comment..." required>
+                <button type="submit">Comment</button>
+              </form>
+            ` : `<div class="login-to-comment">Log in to comment.</div>`}
+          </div>
+        `;
+        postsDiv.innerHTML += postHtml;
+        loadComments(postId);
+        updateCommentCount(postId);
+      });
+
+      // Attach comment form handlers
+      if (currentUser) {
+        document.querySelectorAll('.commentForm').forEach(form => {
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const postId = this.getAttribute('data-postid');
+            const input = this.querySelector('.commentInput');
+            const commentText = input.value.trim();
+            if (commentText) {
+              db.collection("users").doc(currentUser.uid).get().then(doc => {
+                const nickname = (doc.exists && doc.data().nickname) ? doc.data().nickname : "Anonymous";
+                db.collection("posts").doc(postId).collection("comments").add({
+                  text: commentText,
+                  author: nickname,
+                  timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                  input.value = '';
+                  loadComments(postId);
+                  updateCommentCount(postId);
+                });
+              });
+            }
+          });
+        });
+      }
+    });
+  }
+
+  // Load comments for a post
+  function loadComments(postId) {
+    db.collection("posts").doc(postId).collection("comments").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+      const commentsDiv = document.getElementById('comments-' + postId);
+      if (!commentsDiv) return;
+      let html = '';
+      snapshot.forEach(doc => {
+        const comment = doc.data();
+        const date = comment.timestamp && comment.timestamp.toDate
+          ? comment.timestamp.toDate().toLocaleString()
+          : '';
+        html += `
+          <div class="comment-card">
+            <span class="comment-author">${escapeHtml(comment.author)}</span>
+            <span class="comment-date">${date ? ' | ' + date : ''}</span>
+            <div class="comment-text">${escapeHtml(comment.text)}</div>
+          </div>
+        `;
+      });
+      commentsDiv.innerHTML = html || '<div class="no-comments">No comments yet.</div>';
+    });
+  }
+
+  // Update comment count for a post
+  function updateCommentCount(postId) {
+    db.collection("posts").doc(postId).collection("comments").get().then(snapshot => {
+      const countDiv = document.getElementById('commentCount-' + postId);
+      if (countDiv) {
+        countDiv.textContent = snapshot.size + (snapshot.size === 1 ? " comment" : " comments");
+      }
+    });
+  }
+
+  // Simple HTML escaping to prevent XSS
+  function escapeHtml(text) {
+    if (!text) return "";
+    return text.replace(/[&<>"']/g, function(m) {
+      return ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m];
+    });
+  }
+});
+</script>
+</body>
+</html>
